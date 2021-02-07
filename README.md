@@ -1,6 +1,6 @@
 # Docker-Quick-SCM
 
-This docker container provides a server to host GIT and SVN repositores.
+This docker container provides a server to host GIT and SVN repositories.
 
 Both repositories are made available to git and svn clients through the HTTP protocol using Apache httpd's ``mod_svn`` (for SVN access) and ``mod_cgi`` (using git's built-in http-backend). The files in the repositories are also browseable using a web browser (courtesy of ``mod_svn`` -- for svn repositories -- and ``gitweb`` -- for git).
 
@@ -15,7 +15,7 @@ $ docker run -d -p 8080:80 --name "instance_name" quitaiskiluisf/quick-scm
 
 Then, fire up http://localhost:8080 in your web browser to test it.
 
-The repositories are stored in /var/www/repos inside the container, so you will most likely want to mount that location in the container to some other location in your computer. In the following example, the path /var/www/repos inside the container would be bind-mounted to the path /srv/docker-quick-scm/repos on the docker host:
+The repositories are stored in /var/www/repos inside the container, so you will most likely want to map that container location somewhere in the host filesystem to persist the repositories. In the following example, the path /var/www/repos inside the container would be bind-mounted to the path /srv/docker-quick-scm/repos on the docker host:
 
 ```
 $ docker run -d -p 8080:80 -v /srv/docker-quick-scm/repos:/var/www/repos --name "instance_name" quitaiskiluisf/quick-scm
