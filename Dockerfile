@@ -42,9 +42,8 @@ COPY scm.conf /etc/apache2/sites-available/
 
 COPY index.html /var/www/html/
 
-# https://httpd.apache.org/docs/2.4/stopping.html#gracefulstop
-STOPSIGNAL SIGWINCH
+COPY run-apachectl.sh /
 
 EXPOSE 80
 
-CMD ["apachectl", "-D", "FOREGROUND"]
+CMD ["./run-apachectl.sh"]
