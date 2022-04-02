@@ -8,7 +8,13 @@ RUN apt-get update && \
                                  git \
                                  gitweb \
                                  libapache2-mod-svn \
+                                 libapache2-mod-wsgi \
+                                 python2 \
+                                 python-pip \
                                  subversion && \
+    # Install Trac and its dependencies
+    pip install Trac[babel,rest,pygments,textile] && \
+    # Cleaning up files which are not needed anymore
     rm -rf /var/lib/apt/lists/* && \
     # Enable CGI execution (necessary for gitweb)
     a2enmod cgi && \
@@ -39,6 +45,8 @@ RUN apt-get update && \
             /etc/gitweb.conf
 
 COPY scm.conf /etc/apache2/sites-available/
+
+COPY trac.wsgi /var/www/
 
 COPY index.html /var/www/html/
 
