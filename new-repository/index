@@ -1,0 +1,181 @@
+#! /bin/bash
+
+# Terminate the page generation process with an on-screen error message
+show_error() {
+    echo "<h1>Error</h1>
+<hr />
+${1}";
+    end_html;
+    exit 0;
+}
+
+# Generate the begining part of the HTML file.
+# It includes everything up to, and including, the opening of the <body> tag.
+begin_html() {
+    echo "Content-Type: text/html
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Create new repository</title>
+  </head>
+<body>"
+}
+
+# Generate the final parts of the HTML file.
+# It includes the closing of the <body> tag and everything from there on.
+end_html() {
+   echo "</body>
+</html>"
+}
+
+# Apply the urldecoding on a given parameter
+url_decode() {
+   python -c "import sys, urllib; print(urllib.unquote_plus(sys.argv[1]));" "$1";
+}
+
+# Shows a message as an error message if the first argument is not zero
+# Expected parameters:
+# 1: the value which will be checked
+# 2: the error message to be shown if value is not zero
+error_if_not_zero() {
+    VALUE="$1";
+    ERROR_MESSAGE="$2";
+
+    if [[ "${VALUE}" != "0" ]]; then
+        show_error "${ERROR_MESSAGE}";
+    fi
+}
+
+# Get the value of a querystring item.
+# Parameters:
+# 1: querystrings: the list with all the querystring values
+# 2: value: the value which should be returned
+# 3: fallback: the value which should be returned if the key was not found or was empty (defaults to an empty string)
+get_querystring_item() {
+    QS="$1";
+    VALUE="$2";
+    FALLBACK="";
+
+    if [[ $# -ge 3 ]]; then
+        FALLBACK="$3";
+    fi
+
+    # Replace the parameter's separator with a newline. After that, uses "grep" to select only the line
+    # which contains the requested parameter (on the beginning of the line). Cut the begining of the string to
+    # leave only the value itself. The "tail" ensures only the last value sent by the client is utilised in
+    # case the same value is supplied twice (which shall never occur under regular use).
+    SIZE=$(echo "${VALUE}=" | wc -c)
+    V=$(echo "${QS}" | sed "s/&/\n/g" | egrep "^${VALUE}=" | tail -n 1 | cut -c "${SIZE}"-);
+    V=$(url_decode "${V}");
+    if [[ "${V}" == "" ]]; then
+        V="${FALLBACK}";
+    fi
+    echo "${V}";
+}
+
+# Generate the empty form
+show_empty_form() {
+    echo "
+<h1>Create repo assistant</h1>
+<hr />
+<form method="POST">
+  <p><label for="name">Name for your repository:</label><input id="name" name="name" /><em>Hint: avoid spaces and special caracters.</em></p>
+  <p><label for="description">Short description for your repository:</label><input id="description" name="description" /></p>
+  <p><input type="checkbox" id="trac" name="trac" /><label for="trac">Create TRAC repository</label></p>
+  <p><input type="checkbox" id="svn" name="svn" /><label for="svn">Create SVN repository</label></p>
+  <p><input type="checkbox" id="git" name="git" /><label for="git">Create GIT repository</label></p>
+  <p><input type="submit" value="Do it!" /></p>
+  <p><strong>Note:</strong>Backup the information entered on the form! If something wrong happens during the creation of any of the repositories, you may end up loosing what you have typed here.</p>
+</form>"
+}
+
+# Validate the values supplied by the client. Show an error message if they are not valid.
+# Parameters:
+# 1 - The name of the repository
+# 2 - Check TRAC repository (on/off)
+# 3 - Check SVN repository (on/off)
+# 4 - Check GIT repository (on/off)
+validate_supplied_values() {
+    REPO_NAME="$1";
+
+    if [[ "${REPO_NAME}" == "" ]]; then
+        show_error "The name of the repository cannot be empty.";
+    fi
+}
+
+# Method called when the user posts data to the script.
+# It must do ALL the required processing.
+process_post_data() {
+    # Validates the supplied headers
+    if [[ "${CONTENT_TYPE}" != "application/x-www-form-urlencoded" ]]; then
+        show_error "\"CONTENT_TYPE\" header MUST be \"x-www-form-urlencoded\".";
+    fi
+
+    if [[ "${CONTENT_LENGTH}" == "" || "${CONTENT_LENGTH}" == "0" ]]; then
+        show_error "\"CONTENT_LENGTH\" header MUST be supplied with a value greater than 0.";
+    fi
+
+    # Saves the posted values to the QUERY_STRING_POST variable
+    read -n ${CONTENT_LENGTH} QUERY_STRING_POST;
+
+    # Get the values which were posted by the client
+    REPO_NAME=$(get_querystring_item "${QUERY_STRING_POST}" "name");
+    REPO_DESCRIPTION=$(get_querystring_item "${QUERY_STRING_POST}" "description");
+    REPO_TRAC=$(get_querystring_item "${QUERY_STRING_POST}" "trac");
+    REPO_SVN=$(get_querystring_item "${QUERY_STRING_POST}" "svn");
+    REPO_GIT=$(get_querystring_item "${QUERY_STRING_POST}" "git");
+
+    validate_supplied_values "${REPO_NAME}"
+
+    if [[ "${REPO_TRAC}" == "on" ]]; then
+        REPO_TRAC="--create-trac-repository";
+    else
+        REPO_TRAC="";
+    fi
+
+    if [[ "${REPO_GIT}" == "on" ]]; then
+        REPO_GIT="--create-git-repository";
+    else
+        REPO_GIT="";
+    fi
+
+    if [[ "${REPO_SVN}" == "on" ]]; then
+        REPO_SVN="--create-svn-repository";
+    else
+        REPO_SVN="";
+    fi
+
+    # Create the repositories
+    MSG=""
+    if [[ "${REPO_DESCRIPTION}" == "" ]]; then
+        MSG=$(bash NewSCMRepo.sh --name "${REPO_NAME}" $REPO_TRAC $REPO_GIT $REPO_SVN);
+    else
+        MSG=$(bash NewSCMRepo.sh --name "${REPO_NAME}" --description "${REPO_DESCRIPTION}" $REPO_TRAC $REPO_GIT $REPO_SVN);
+    fi
+    error_if_not_zero $? "${MSG}";
+
+    cat <<EOF
+<h1>Repository created successfully</h1>
+<hr />
+<ul>
+  <li><strong>REPO_NAME</strong>:${REPO_NAME}</li>
+  <li><strong>REPO_DESCRIPTION</strong>:${REPO_DESCRIPTION}</li>
+  <li><strong>REPO_TRAC</strong>:${REPO_TRAC}</li>
+  <li><strong>REPO_SVN</strong>:${REPO_SVN}</li>
+  <li><strong>REPO_GIT</strong>:${REPO_GIT}</li>
+</ul>
+EOF
+}
+
+#
+# Main processing
+#
+
+begin_html
+if [[ "${REQUEST_METHOD}" == "GET" ]]; then
+    show_empty_form;
+else
+    process_post_data;
+fi;
+end_html
