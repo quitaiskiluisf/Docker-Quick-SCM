@@ -87,6 +87,34 @@ You can run the following command to add users and/or change passwords (replace 
 docker exec -it "instance_name" bash -c "touch /var/www/auth/htdigest && htdigest /var/www/auth/htdigest SCM myusername"
 ```
 
+## LDAP/AD authentication
+
+The following configuration can be used to enable LDAP/AD authentication. LDAP/AD authentication works in a similar fashion as Basic Authentication, but queries a domain controller in order to check the credentials. Just as Basic Authentication, LDAP/AD authentication also sends the credentials without encryption through the network, so consider enabling HTTPS for increased security.
+
+```
+AuthType Basic
+AuthName "SCM"
+AuthBasicProvider ldap
+LDAPReferrals Off
+
+AuthLDAPURL "ldap://dns_name_or_ip_address_of_the_domain_controller_here/DC=name_of_domain_here,DC=local?cn?sub"
+
+AuthLDAPBindDN "username_used_for_binding_to_the_domain_controller"
+AuthLDAPBindPassword "password_for_the_user"
+
+Require valid-user
+```
+
+Using this configuration, any user which can authenticate in LDAP can also access GIT/SVN/TRAC. If you are using Microsoft Active Directory and you want to limit the access to a specific group of users, create an AD group, add the users/groups which need access to this group and replace the ```Require valid-user``` line with the following line:
+
+
+```
+Require ldap-filter memberOf:1.2.840.113556.1.4.1941:=canonical_name_of_the_group
+```
+
+Just as a sidenote, the ```1.2.840.113556.1.4.1941``` part is the *LDAP_MATCHING_RULE_IN_CHAIN* operator, and allows the domain controller to perform recursive searches (https://ldapwiki.com/wiki/LDAP_MATCHING_RULE_IN_CHAIN). This is necessary in order to validate users which are not direct children of the group, but which belong to groups which were added as child elements of this group, with no depth limit, in an efficient way.
+
+
 # Wrapping up
 
 Below you can find the complete line you can use to start using the container:

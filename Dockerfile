@@ -25,6 +25,8 @@ RUN apt-get update && \
     a2enmod cgi && \
     # Enable authentication/authorization
     a2enmod auth_digest && \
+    a2enmod ldap && \
+    a2enmod authnz_ldap && \
     # Use file descriptors as log destinations instead of local files
     # This allows the usage of "docker logs" to get the log files from outside
     # the container
