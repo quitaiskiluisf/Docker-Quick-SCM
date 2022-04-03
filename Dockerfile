@@ -8,7 +8,18 @@ RUN apt-get update && \
                                  git \
                                  gitweb \
                                  libapache2-mod-svn \
+                                 libapache2-mod-wsgi \
+                                 python2 \
+                                 python-pip \
+                                 python-subversion \
                                  subversion && \
+    # Install Trac and its dependencies
+    pip install Trac[babel,rest,pygments,textile] && \
+    # Mark extra packages as installed manually and then remove packages and files
+    # which are not needed anymore
+    apt-get --assume-yes install python-pkg-resources python-setuptools && \
+    apt-get --assume-yes remove python-pip && \
+    apt-get --assume-yes autoremove && \
     rm -rf /var/lib/apt/lists/* && \
     # Enable CGI execution (necessary for gitweb)
     a2enmod cgi && \
@@ -23,7 +34,7 @@ RUN apt-get update && \
     # Remove old configuration files and unnecessary files
     rm -rf /etc/apache2/sites-available/*.conf /etc/apache2/sites-enabled/*.conf /var/www/html/* && \
     # Create directories and new configuration files
-    mkdir -p /var/www/repos /var/www/auth && \
+    mkdir -p /var/www/repos /var/www/auth /var/www/new-repository && \
     # Link the "scm.conf" file in the "sites-enabled" directory. The file does not exist yet,
     # but will be copied there soon
     cd /etc/apache2/sites-enabled/ && \
@@ -40,7 +51,11 @@ RUN apt-get update && \
 
 COPY scm.conf /etc/apache2/sites-available/
 
+COPY trac.wsgi /var/www/
+
 COPY index.html /var/www/html/
+
+COPY new-repository/* /var/www/new-repository/
 
 COPY run-apachectl.sh /
 
