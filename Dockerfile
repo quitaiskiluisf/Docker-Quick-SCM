@@ -23,6 +23,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     # Enable CGI execution (necessary for gitweb)
     a2enmod cgi && \
+    # Enable authentication/authorization
+    a2enmod auth_digest && \
     # Use file descriptors as log destinations instead of local files
     # This allows the usage of "docker logs" to get the log files from outside
     # the container

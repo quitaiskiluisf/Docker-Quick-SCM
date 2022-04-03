@@ -52,6 +52,8 @@ The content of the ``auth.conf`` may change according to the authentication mech
 
 ## Basic authentication
 
+Basic authentication is easy to configure. But remember that, unless you are using HTTPS, the username and password will be sent unencrypted through the network.
+
 To enable basic authentication, include the following in the ``auth.conf`` file.
 
 ```
@@ -65,6 +67,24 @@ You can run the following command to add users and/or change passwords (replace 
 
 ```
 docker exec -it "instance_name" bash -c "touch /var/www/auth/htpasswd && htpasswd /var/www/auth/htpasswd myusername"
+```
+
+## Digest authentication
+
+Digest authentication does not send the password as plain-text through the network. So, it's better to use this scheme if you cannot enable HTTPS.
+
+```
+AuthType Digest
+AuthName "SCM"
+AuthDigestDomain /
+AuthUserFile /var/www/auth/htdigest
+Require valid-user
+```
+
+You can run the following command to add users and/or change passwords (replace ``myusername`` with the username you want to create/change password):
+
+```
+docker exec -it "instance_name" bash -c "touch /var/www/auth/htdigest && htdigest /var/www/auth/htdigest SCM myusername"
 ```
 
 # Wrapping up
